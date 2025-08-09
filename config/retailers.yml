@@ -8,6 +8,36 @@ must_include:
     stock_selector: ".product-availability, .stock-status, .availability"
     in_stock_text: "in stock"
 
+  - name: "PCCG"
+    url: "https://www.pccasegear.com/products/69141/msi-geforce-rtx-5070-ti-inspire-3x-oc-gddr7-16gb"
+    price_selector: ".price, [itemprop='price']"
+    stock_selector: ".stock, .availability, [data-testid='stock']"
+    in_stock_text: "in stock"
+
+  - name: "Scorptec"
+    url: "https://www.scorptec.com.au/product/graphics-cards/nvidia/117339-geforce-rtx-5070-ti-16g-inspire-3x-oc"
+    price_selector: "[data-testid='product-price'], .price, .product-price"
+    stock_selector: ".stock, [data-testid='stock'], .availability"
+    in_stock_text: "in stock"
+
+  - name: "Centre Com"
+    url: "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
+    price_selector: ".price, [data-price-type='finalPrice'] .price"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
+  - name: "Umart"
+    url: "https://www.umart.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
+    price_selector: ".product-price, [data-test='Price'], .product-price"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
+  - name: "Mwave"
+    url: "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860"
+    price_selector: ".price, .product-price, [itemprop='price']"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
 retailers:
   - name: "Scorptec"
     search_url: "https://www.scorptec.com.au/search/{q}"
