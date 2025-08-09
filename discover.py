@@ -60,8 +60,8 @@ def run():
         for r in retailers:
             try:
                 search_url = r["search_url"].format(q=quote_plus(q))
-                page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
-                time.sleep(1.0)
+                page.goto(best_href, wait_until="networkidle", timeout=60000)
+                time.sleep(1.5)
                 soup = BeautifulSoup(page.content(), "lxml")
                 links = []
                 for a in soup.select(r["result_item_selector"]):
