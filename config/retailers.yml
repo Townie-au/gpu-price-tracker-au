@@ -1,0 +1,58 @@
+query: "MSI GeForce RTX 5070 Ti INSPIRE 3X OC"
+tokens: ["MSI","GeForce","RTX","5070","Ti","INSPIRE","3X","OC"]   # for fuzzy match
+
+must_include:
+  - name: "MSY"
+    url: "https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
+    price_selector: ".product-price, [data-testid='productPrice'], .price"
+    stock_selector: ".product-availability, .stock-status, .availability"
+    in_stock_text: "in stock"
+
+retailers:
+  - name: "Scorptec"
+    search_url: "https://www.scorptec.com.au/search/{q}"
+    result_item_selector: ".product-list .product-item a[href*='/product/']"
+    product_title_selector: "h1, .product-title"
+    price_selector: "[data-testid='product-price'], .price, .product-price"
+    stock_selector: ".stock, [data-testid='stock'], .availability"
+    in_stock_text: "in stock"
+
+  - name: "PCCG"
+    search_url: "https://www.pccasegear.com/search?query={q}"
+    result_item_selector: "a.product-list-item"
+    product_title_selector: "h1, .product-title"
+    price_selector: ".price, [itemprop='price']"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
+  - name: "PLE"
+    search_url: "https://www.ple.com.au/Search/{q}"
+    result_item_selector: "a.product"
+    product_title_selector: "h1, .product-title"
+    price_selector: ".price, [itemprop='price']"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
+  - name: "Umart"
+    search_url: "https://www.umart.com.au/search?keywords={q}"
+    result_item_selector: "a[href*='/product/']"
+    product_title_selector: "h1, .product-title"
+    price_selector: ".price, [data-test='Price'], .product-price"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
+  - name: "Centre Com"
+    search_url: "https://www.centrecom.com.au/catalogsearch/result/?q={q}"
+    result_item_selector: "a.product-item-link"
+    product_title_selector: "h1, .page-title"
+    price_selector: ".price, [data-price-type='finalPrice'] .price"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
+
+  - name: "Mwave"
+    search_url: "https://www.mwave.com.au/search?query={q}"
+    result_item_selector: "a[href*='/product/']"
+    product_title_selector: "h1, .product-title"
+    price_selector: ".price, .product-price"
+    stock_selector: ".stock, .availability"
+    in_stock_text: "in stock"
