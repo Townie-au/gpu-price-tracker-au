@@ -1,35 +1,13 @@
 {
-  "ts": "2025-08-09T10:10:54.564480+10:00",
-  "sku": "MSI GeForce RTX 5070 Ti 16G INSPIRE 3X OC",
+  "ts": "2025-08-09T10:24:47.797081+10:00",
+  "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
   "lowest": null,
   "stores": [
     {
-      "store": "Scorptec",
+      "store": "MSY",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://<PASTE-SCORPTEC-PRODUCT-URL>",
-      "error": "Page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL\nCall log:\nnavigating to \"https://<PASTE-SCORPTEC-PRODUCT-URL>\", waiting until \"domcontentloaded\"\n"
-    },
-    {
-      "store": "PCCG",
-      "price_aud": null,
-      "in_stock": null,
-      "url": "https://<PASTE-PCCG-PRODUCT-URL>",
-      "error": "Page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL\nCall log:\nnavigating to \"https://<PASTE-PCCG-PRODUCT-URL>\", waiting until \"domcontentloaded\"\n"
-    },
-    {
-      "store": "PLE",
-      "price_aud": null,
-      "in_stock": null,
-      "url": "https://<PASTE-PLE-PRODUCT-URL>",
-      "error": "Page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL\nCall log:\nnavigating to \"https://<PASTE-PLE-PRODUCT-URL>\", waiting until \"domcontentloaded\"\n"
-    },
-    {
-      "store": "Umart",
-      "price_aud": null,
-      "in_stock": null,
-      "url": "https://<PASTE-UMART-PRODUCT-URL>",
-      "error": "Page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL\nCall log:\nnavigating to \"https://<PASTE-UMART-PRODUCT-URL>\", waiting until \"domcontentloaded\"\n"
+      "url": "https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
     }
   ]
 }
