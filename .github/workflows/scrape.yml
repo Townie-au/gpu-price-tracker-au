@@ -36,6 +36,14 @@ jobs:
           echo "===== config/stores.yml ====="
           ls -la config || true
           cat config/stores.yml || true
+
+      - name: Commit discovered stores.yml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/stores.yml
+          git commit -m "auto: update stores.yml" || echo "No changes"
+          git push
           
       - name: Run scraper
         run: python scrape.py
