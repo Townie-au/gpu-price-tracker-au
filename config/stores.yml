@@ -5,3 +5,8 @@ stores:
   price_selector: .product-price, [data-testid='productPrice'], .price
   stock_selector: .product-availability, .stock-status, .availability
   in_stock_text: in stock
+- name: PLE
+  url: https://www.ple.com.au/products/676563/msi-geforce-rtx-5070-ti-inspire-3x-oc-16gb-gddr7
+  price_selector: .price, [itemprop='price']
+  stock_selector: .stock, .availability
+  in_stock_text: in stock
