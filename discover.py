@@ -57,6 +57,7 @@ stealth_sync(page)
                 search_url = r["search_url"].format(q=quote_plus(q))
                 print(f"[DISCOVER] Retailer={r['name']}  URL={search_url}")
                 page.goto(search_url, wait_until="networkidle", timeout=60000)
+                page.wait_for_timeout(6000)
                 time.sleep(2.0)
                 soup = BeautifulSoup(page.content(), "lxml")
 
