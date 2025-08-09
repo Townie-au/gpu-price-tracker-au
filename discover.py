@@ -28,17 +28,19 @@ def run():
     found = []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
         context = browser.new_context(
             user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
-        locale="en-AU",
-        timezone_id="Australia/Sydney",
-        viewport={"width": 1366, "height": 768}
-)
-page = context.new_page()
-stealth_sync(page)
-
+                        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+            locale="en-AU",
+            timezone_id="Australia/Sydney",
+            viewport={"width": 1366, "height": 768}
+        )
+        page = context.new_page()
+        stealth_sync(page)
 
         # 1) Force-include fixed entries (e.g., MSY)
         for it in must_include:
@@ -51,20 +53,17 @@ stealth_sync(page)
                 "in_stock_text": it.get("in_stock_text", "in stock")
             })
 
-        # 2) Discover via each retailer's search
+        # 2) Discover via each retailer's search (kept simple; we mainly rely on must_include)
         for r in retailers:
             try:
                 search_url = r["search_url"].format(q=quote_plus(q))
                 print(f"[DISCOVER] Retailer={r['name']}  URL={search_url}")
                 page.goto(search_url, wait_until="networkidle", timeout=60000)
-                page.wait_for_timeout(6000)
-                time.sleep(2.0)
+                page.wait_for_timeout(6000)  # give CF time if present
                 soup = BeautifulSoup(page.content(), "lxml")
 
-                # -------- collect links (with fallback) --------
+                # Try site-provided selector first
                 links = []
-
-                # Try retailer-provided selector first
                 sel = r.get("result_item_selector")
                 if sel:
                     for a in soup.select(sel):
@@ -75,7 +74,7 @@ stealth_sync(page)
                         if href:
                             links.append((txt, href))
 
-                # Fallback: score all anchors on page (same-site only)
+                # Fallback: all anchors on same host
                 if not links:
                     host = search_url.split("/")[2].lower()
                     seen = set()
@@ -94,13 +93,10 @@ stealth_sync(page)
                         links.append((txt, href))
 
                 print(f"[DISCOVER] {r['name']}: found {len(links)} candidate links (with fallback)")
-                for i, (txt, href) in enumerate(links[:5]):
-                    print(f"  - cand{i+1}: text='{txt[:80]}' url='{href}'")
-
                 if not links:
                     continue
 
-                # ---- scoring helpers (text + href) ----
+                # Score by tokens in text + href
                 def href_tokenscore(href: str, toks: list[str]) -> int:
                     h = href.lower().replace("-", " ").replace("_", " ").replace("/", " ")
                     return sum(1 for t in toks if t.lower() in h)
@@ -118,22 +114,19 @@ stealth_sync(page)
                     s += productish(href) * 2
                     return s
 
-                # Rank by combined score
                 ranked = sorted(links, key=lambda x: total_score(x[0], x[1]), reverse=True)
                 best_txt, best_href = ranked[0]
                 best_score = total_score(best_txt, best_href)
                 print(f"[DISCOVER] {r['name']}: chosen href = {best_href}  score={best_score}")
 
-                # sanity: require at least some GPU-ish match
                 if best_score < 4:
                     print(f"[DISCOVER] {r['name']}: skipped (low combined score)")
                     continue
 
-                # Visit product page and check title
+                # Visit product page and check title loosely
                 page.goto(best_href, wait_until="networkidle", timeout=60000)
-                time.sleep(1.5)
+                page.wait_for_timeout(1500)
                 psoup = BeautifulSoup(page.content(), "lxml")
-
                 title_el = None
                 for sel in (r.get("product_title_selector") or "h1").split(","):
                     sel = sel.strip()
@@ -142,7 +135,6 @@ stealth_sync(page)
                     title_el = psoup.select_one(sel)
                     if title_el:
                         break
-
                 title = title_el.get_text(" ", strip=True) if title_el else ""
                 if not title:
                     ttag = psoup.select_one("title")
@@ -182,10 +174,8 @@ stealth_sync(page)
             "in_stock_text": s.get("in_stock_text")
         })
 
-    # Write config/stores.yml
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    data = {"sku": cfg["query"], "stores": stores}
-    OUT.write_text(yaml.safe_dump(data, sort_keys=False))
+    OUT.write_text(yaml.safe_dump({"sku": cfg["query"], "stores": stores}, sort_keys=False))
     print(f"[DISCOVER] wrote {OUT} with {len(stores)} stores")
 
 if __name__ == "__main__":
