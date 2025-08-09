@@ -16,13 +16,13 @@ CONFIG  = ROOT / "config" / "stores.yml"
 
 # ---------- heuristics ----------
 # Accept realistic GPU prices only; widen if you want.
-MIN_PRICE = 900.0
-MAX_PRICE = 5000.0
+MIN_PRICE = 1100.0
+MAX_PRICE = 3000.0
 
 JUNK_WORDS = [
     "per week", "per fortnight", "per month", "/week", "/wk", "/fortnight",
     "afterpay", "zip", "klarna", "interest-free", "interest free", "laybuy",
-    "deposit", "from ", "as low as", "finance", "credit", "rent", "*$"
+    "deposit", "from ", "as low as", "finance", "credit", "rent", "*$", "/mo", "/month"
 ]
 GOOD_WORDS = [
     "add to cart", "in stock", "buy now", "final price", "our price", "inc gst", "incl. gst",
@@ -38,6 +38,8 @@ GENERIC_PRICE_SELECTORS = [
     "[data-price]",
     "[data-testid='product-price']",
     "[data-test='Price']",
+    "span[itemprop='price'][content]",
+    "meta[property='og:price:amount']"
     ".product-price",
     ".price",
     ".final-price",
