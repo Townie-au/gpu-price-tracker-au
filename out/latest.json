@@ -1,11 +1,11 @@
 {
-  "ts": "2025-08-09T11:53:52.903616+10:00",
+  "ts": "2025-08-09T12:02:55.710703+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
   "lowest": {
-    "store": "Scorptec",
-    "price_aud": 929.0,
+    "store": "Centre Com",
+    "price_aud": 1679.0,
     "in_stock": null,
-    "url": "https://www.scorptec.com.au/product/graphics-cards/nvidia/117339-geforce-rtx-5070-ti-16g-inspire-3x-oc"
+    "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
   },
   "stores": [
     {
@@ -22,7 +22,7 @@
     },
     {
       "store": "Scorptec",
-      "price_aud": 929.0,
+      "price_aud": null,
       "in_stock": null,
       "url": "https://www.scorptec.com.au/product/graphics-cards/nvidia/117339-geforce-rtx-5070-ti-16g-inspire-3x-oc"
     },
