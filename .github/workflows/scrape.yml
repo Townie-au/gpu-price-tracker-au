@@ -28,6 +28,9 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
+      - name: Run discovery (build config/stores.yml)
+        run: python discover.py
+      
       - name: Run scraper
         run: python scrape.py
 
