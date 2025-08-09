@@ -85,7 +85,7 @@ def run():
                     title_el = psoup.select_one(sel.strip())
                     if title_el: break
                 title = title_el.get_text(" ", strip=True) if title_el else best_href
-                if score_title(title, tokens) < len(tokens) - 3:
+                if score_title(title, tokens) < max(4, len(tokens) - 5):
                     # If title is very weak match, skip to avoid false positives
                     continue
 
