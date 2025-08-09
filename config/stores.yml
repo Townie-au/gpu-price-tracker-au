@@ -1,0 +1,23 @@
+sku: "MSI GeForce RTX 5070 Ti 16G INSPIRE 3X OC"
+
+stores:
+  - name: "Scorptec"
+    url: "https://<PASTE-SCORPTEC-PRODUCT-URL>"
+    price_selector: '[data-testid="product-price"], .price, .product-price'
+    stock_selector:  '.stock, [data-testid="stock"], .availability'
+    in_stock_text: "in stock"
+  - name: "PCCG"
+    url: "https://<PASTE-PCCG-PRODUCT-URL>"
+    price_selector: '.price, .product-price, [itemprop="price"]'
+    stock_selector:  '.stock, .availability, [data-testid="stock"]'
+    in_stock_text: "in stock"
+  - name: "PLE"
+    url: "https://<PASTE-PLE-PRODUCT-URL>"
+    price_selector: '.price, .product-price, [itemprop="price"]'
+    stock_selector:  '.stock, .availability'
+    in_stock_text: "in stock"
+  - name: "Umart"
+    url: "https://<PASTE-UMART-PRODUCT-URL>"
+    price_selector: '.price, [data-test="Price"], .product-price'
+    stock_selector:  '.stock, .availability'
+    in_stock_text: "in stock"
