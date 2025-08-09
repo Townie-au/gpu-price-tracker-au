@@ -64,10 +64,10 @@ def run():
                         if href:
                             links.append((txt, href))
 
-                # Fallback: score all anchors on page
+                # Fallback: score all anchors on page (same-site only)
                 if not links:
-                    all_as = []
                     host = search_url.split("/")[2].lower()
+                    seen = set()
                     for a in soup.select("a[href]"):
                         href = a.get("href") or ""
                         if href.startswith("/"):
@@ -77,26 +77,10 @@ def run():
                         if host not in href.lower():
                             continue
                         txt = a.get_text(" ", strip=True) or ""
-                        all_as.append((txt, href))
-
-                    # prefer product-looking URLs
-                    def productish(h: str) -> int:
-                        h = h.lower()
-                        keys = ("/product", "/products", "/item", "/p/", "/buy", "/detail")
-                        return sum(k in h for k in keys)
-
-                    # de-dupe by href
-                    seen = set()
-                    dedup = []
-                    for txt, href in all_as:
                         if href in seen:
                             continue
                         seen.add(href)
-                        dedup.append((txt, href))
-
-                    # keep top 50 by "productish" score, then rely on token scoring
-                    dedup.sort(key=lambda x: productish(x[1]), reverse=True)
-                    links = dedup[:50]
+                        links.append((txt, href))
 
                 print(f"[DISCOVER] {r['name']}: found {len(links)} candidate links (with fallback)")
                 for i, (txt, href) in enumerate(links[:5]):
@@ -105,10 +89,34 @@ def run():
                 if not links:
                     continue
 
-                # Rank by token overlap in link text
-                ranked = sorted(links, key=lambda x: score_title(x[0], tokens), reverse=True)
-                best_href = ranked[0][1]
-                print(f"[DISCOVER] {r['name']}: chosen href = {best_href}")
+                # ---- scoring helpers (text + href) ----
+                def href_tokenscore(href: str, toks: list[str]) -> int:
+                    h = href.lower().replace("-", " ").replace("_", " ").replace("/", " ")
+                    return sum(1 for t in toks if t.lower() in h)
+
+                def productish(href: str) -> int:
+                    h = href.lower()
+                    keys = ("/product", "/products", "/p/", "/item", "/buy", "/detail")
+                    return sum(k in h for k in keys)
+
+                gpu_keywords = ["msi", "geforce", "rtx", "5070", "ti", "inspire", "3x", "oc"]
+
+                def total_score(txt: str, href: str) -> int:
+                    s = score_title(txt, tokens) + href_tokenscore(href, tokens)
+                    s += href_tokenscore(href, gpu_keywords)
+                    s += productish(href) * 2
+                    return s
+
+                # Rank by combined score
+                ranked = sorted(links, key=lambda x: total_score(x[0], x[1]), reverse=True)
+                best_txt, best_href = ranked[0]
+                best_score = total_score(best_txt, best_href)
+                print(f"[DISCOVER] {r['name']}: chosen href = {best_href}  score={best_score}")
+
+                # sanity: require at least some GPU-ish match
+                if best_score < 4:
+                    print(f"[DISCOVER] {r['name']}: skipped (low combined score)")
+                    continue
 
                 # Visit product page and check title
                 page.goto(best_href, wait_until="networkidle", timeout=60000)
@@ -171,3 +179,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+
