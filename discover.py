@@ -22,7 +22,8 @@ def extract_price_text(soup, sels):
         el = soup.select_one(sel.strip())
         if el:
             txt = el.get_text(" ", strip=True)
-            if txt: return txt
+            if txt:
+                return txt
     return None
 
 def detect_in_stock(soup, stock_sel, needle):
@@ -51,18 +52,19 @@ def run():
             found.append({
                 "name": it["name"],
                 "url": it["url"],
-                "price_selector": it.get("price_selector",".price"),
-                "stock_selector": it.get("stock_selector",".stock"),
-                "in_stock_text": it.get("in_stock_text","in stock")
+                "price_selector": it.get("price_selector", ".price"),
+                "stock_selector": it.get("stock_selector", ".stock"),
+                "in_stock_text": it.get("in_stock_text", "in stock")
             })
 
         # 2) Discover per retailer via site search
         for r in retailers:
             try:
                 search_url = r["search_url"].format(q=quote_plus(q))
-                page.goto(best_href, wait_until="networkidle", timeout=60000)
-                time.sleep(1.5)
+                page.goto(search_url, wait_until="networkidle", timeout=60000)
+                time.sleep(2.0)
                 soup = BeautifulSoup(page.content(), "lxml")
+
                 links = []
                 for a in soup.select(r["result_item_selector"]):
                     href = a.get("href") or ""
@@ -77,16 +79,25 @@ def run():
                 best_href = ranked[0][1]
 
                 # Optional: visit product page and double-check title
-                page.goto(best_href, wait_until="domcontentloaded", timeout=45000)
-                time.sleep(0.8)
+                page.goto(best_href, wait_until="networkidle", timeout=60000)
+                time.sleep(1.5)
                 psoup = BeautifulSoup(page.content(), "lxml")
+
+                # Try H1/product-title first
                 title_el = None
                 for sel in (r.get("product_title_selector") or "h1").split(","):
                     title_el = psoup.select_one(sel.strip())
-                    if title_el: break
-                title = title_el.get_text(" ", strip=True) if title_el else best_href
+                    if title_el:
+                        break
+
+                # Fallback to <title> tag if needed
+                title = title_el.get_text(" ", strip=True) if title_el else ""
+                if not title:
+                    ttag = psoup.select_one("title")
+                    title = ttag.get_text(" ", strip=True) if ttag else best_href
+
+                # Looser threshold to allow minor naming differences
                 if score_title(title, tokens) < max(4, len(tokens) - 5):
-                    # If title is very weak match, skip to avoid false positives
                     continue
 
                 found.append({
@@ -96,8 +107,8 @@ def run():
                     "stock_selector": r.get("stock_selector"),
                     "in_stock_text": r.get("in_stock_text")
                 })
-            except Exception as e:
-                # Just skip on errors; discovery is best-effort
+            except Exception:
+                # best-effort; skip failures
                 continue
 
         browser.close()
@@ -106,7 +117,7 @@ def run():
     seen = set()
     stores = []
     for s in found:
-        if s["name"] in seen: 
+        if s["name"] in seen:
             continue
         seen.add(s["name"])
         stores.append({
