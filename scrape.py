@@ -1,5 +1,5 @@
 import json, re, sys, time, pathlib, datetime as dt
-from typing import Optional
+from typing import Optional, List, Tuple
 import yaml
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
@@ -14,9 +14,22 @@ HISTORY = OUTDIR / "history.json"
 LATEST  = OUTDIR / "latest.json"
 CONFIG  = ROOT / "config" / "stores.yml"
 
-# price patterns
-PRICE_RE = re.compile(r"\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)")
-AUD_NEAR_RE = re.compile(r"(?:A?\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)", re.I)
+# ---------- heuristics ----------
+# Accept realistic GPU prices only; widen if you want.
+MIN_PRICE = 900.0
+MAX_PRICE = 5000.0
+
+JUNK_WORDS = [
+    "per week", "per fortnight", "per month", "/week", "/wk", "/fortnight",
+    "afterpay", "zip", "klarna", "interest-free", "interest free", "laybuy",
+    "deposit", "from ", "as low as", "finance", "credit", "rent", "*$"
+]
+GOOD_WORDS = [
+    "add to cart", "in stock", "buy now", "final price", "our price", "inc gst", "incl. gst",
+    "price", "member price", "special", "deal", "cart"
+]
+
+PRICE_RE = re.compile(r"(?:A?\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})?)", re.I)
 
 GENERIC_PRICE_SELECTORS = [
     "[itemprop='price']",
@@ -25,16 +38,13 @@ GENERIC_PRICE_SELECTORS = [
     "[data-price]",
     "[data-testid='product-price']",
     "[data-test='Price']",
-    ".price .amount",
-    ".price .price",
     ".product-price",
     ".price",
-    ".our-price",
     ".final-price",
-    ".productView-price",
-    ".p-price",
+    ".price .amount",
+    ".price .price",
     ".price__current",
-    ".price-section .price",
+    ".productView-price",
     "span.price",
     "div.price",
 ]
@@ -48,10 +58,82 @@ GENERIC_STOCK_SELECTORS = [
     ".in-stock",
 ]
 
-def is_plausible_gpu_price(v: Optional[float]) -> bool:
-    if v is None:
-        return False
-    return 500.0 <= v <= 5000.0
+def plausible(v: Optional[float]) -> bool:
+    return v is not None and (MIN_PRICE <= v <= MAX_PRICE)
+
+def to_float(s: str) -> Optional[float]:
+    m = PRICE_RE.search(s or "")
+    if not m: return None
+    try: return float(m.group(1).replace(",", ""))
+    except: return None
+
+def text_near(el) -> str:
+    # element text + a bit of parent text for context
+    t = (el.get_text(" ", strip=True) if hasattr(el, "get_text") else "") or ""
+    p = el.parent.get_text(" ", strip=True) if getattr(el, "parent", None) else ""
+    s = (t + " " + p).lower()
+    return re.sub(r"\s+", " ", s)[:400]
+
+def score_context(txt: str) -> int:
+    s = 0
+    for w in GOOD_WORDS:
+        if w in txt: s += 2
+    for w in JUNK_WORDS:
+        if w in txt: s -= 6
+    return s
+
+def collect_css_candidates(soup: BeautifulSoup, selectors: List[str]) -> List[Tuple[float,int,str]]:
+    cands = []
+    for sel in selectors:
+        for el in soup.select(sel):
+            # meta price in content/value
+            if getattr(el, "name", "") == "meta":
+                val = el.get("content") or el.get("value") or ""
+                v = to_float(val)
+                if plausible(v):
+                    cands.append((v, 15, f"meta:{sel}"))
+                continue
+            # text price
+            txt = el.get_text(" ", strip=True)
+            v = to_float(txt)
+            if plausible(v):
+                ctx = text_near(el)
+                cands.append((v, 10 + score_context(ctx), f"css:{sel} ctx"))
+    return cands
+
+def collect_jsonld_candidates(soup: BeautifulSoup) -> List[Tuple[float,int,str]]:
+    out = []
+    for s in soup.find_all("script", {"type":"application/ld+json"}):
+        raw = s.get_text(strip=True) or ""
+        # quick wins
+        for m in re.finditer(r'"price"\s*:\s*"?(?P<val>[0-9]{2,5}(?:\.[0-9]{2})?)"?', raw):
+            v = to_float("A$"+m.group("val"))
+            if plausible(v): out.append((v, 18, "jsonld:price"))
+        # low/high price fields
+        for key in ("lowPrice","highPrice","priceAmount"):
+            for m in re.finditer(rf'"{key}"\s*:\s*"?(?P<val>[0-9]{{2,5}}(?:\.[0-9]{{2}})?)"?', raw):
+                v = to_float("A$"+m.group("val"))
+                if plausible(v): out.append((v, 16, f"jsonld:{key}"))
+    return out
+
+def collect_regex_candidates(html: str) -> List[Tuple[float,int,str]]:
+    cands = []
+    # require currency symbol; avoid bare numbers
+    for m in re.finditer(r"(?:A?\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})?)", html, re.I):
+        v = to_float("A$"+m.group(1))
+        if plausible(v):
+            # peek around the match for bad words
+            start = max(0, m.start()-80); end = min(len(html), m.end()+80)
+            ctx = html[start:end].lower()
+            pen = -8 if any(w in ctx for w in JUNK_WORDS) else 0
+            cands.append((v, 5 + pen, "regex"))
+    return cands
+
+def choose_best(cands: List[Tuple[float,int,str]]) -> Optional[float]:
+    if not cands: return None
+    # pick by score then value (prefer higher if same score to avoid per-week small numbers)
+    cands.sort(key=lambda x: (x[1], x[0]), reverse=True)
+    return cands[0][0]
 
 class Store(BaseModel):
     name: str
@@ -66,125 +148,14 @@ class Snapshot(BaseModel):
     lowest: Optional[dict]
     stores: list
 
-def extract_price_number(text: str) -> Optional[float]:
-    if not text:
-        return None
-    m = AUD_NEAR_RE.search(text)
-    if not m:
-        m = PRICE_RE.search(text)
-    if not m:
-        return None
-    v = m.group(1).replace(",", "")
-    try:
-        return float(v)
-    except:
-        return None
-
-def try_css_price(soup, selectors: list[str]) -> Optional[float]:
-    for sel in selectors:
-        el = soup.select_one(sel)
-        if not el:
-            continue
-        # meta tag?
-        if el.name == "meta":
-            content = el.get("content") or el.get("value")
-            p = extract_price_number(content or "")
-            if p is not None and is_plausible_gpu_price(p):
-                return p
-        txt = el.get_text(" ", strip=True)
-        p = extract_price_number(txt)
-        if p is not None and is_plausible_gpu_price(p):
-            return p
-    return None
-
-def try_jsonld_price(soup) -> Optional[float]:
-    for s in soup.find_all("script", {"type": "application/ld+json"}):
-        raw = s.get_text(strip=True)
-        if not raw:
-            continue
-        # Try JSON first
-        try:
-            data = json.loads(raw)
-        except Exception:
-            # crude fallback: look for "price":"1234.56"
-            m = re.search(r'"price"\s*:\s*"?(?P<val>[0-9,]+\.\d{2})"?', raw)
-            if m:
-                p = float(m.group("val").replace(",", ""))
-                return p if is_plausible_gpu_price(p) else None
-            continue
-
-        def walk(obj):
-            if isinstance(obj, dict):
-                for k in ("price", "priceAmount", "lowPrice", "highPrice"):
-                    if k in obj:
-                        p = extract_price_number(str(obj[k]))
-                        if p is not None and is_plausible_gpu_price(p):
-                            return p
-                offers = obj.get("offers")
-                if offers:
-                    p = walk(offers)
-                    if p is not None:
-                        return p
-                graph = obj.get("@graph")
-                if graph:
-                    p = walk(graph)
-                    if p is not None:
-                        return p
-                agg = obj.get("aggregateOffer") or obj.get("aggregateRating")
-                if agg:
-                    p = walk(agg)
-                    if p is not None:
-                        return p
-                for v in obj.values():
-                    p = walk(v)
-                    if p is not None:
-                        return p
-            elif isinstance(obj, list):
-                for v in obj:
-                    p = walk(v)
-                    if p is not None:
-                        return p
-            return None
-
-        p = walk(data)
-        if p is not None and is_plausible_gpu_price(p):
-            return p
-    return None
-
-def try_regex_price(html: str) -> Optional[float]:
-    # Only consider currency-tagged values; avoid bare numbers/IDs
-    near = re.findall(
-        r"(?:price|now|today|was)[^$A]{0,80}(?:A?\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})?)",
-        html, re.I
-    )
-    candidates = []
-    for s in near:
-        try:
-            candidates.append(float(s.replace(",", "")))
-        except:
-            pass
-    if not candidates:
-        m = re.findall(r"(?:A?\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})?)", html, re.I)
-        for s in m:
-            try:
-                candidates.append(float(s.replace(",", "")))
-            except:
-                pass
-    candidates = [c for c in candidates if is_plausible_gpu_price(c)]
-    if candidates:
-        # take the largest plausible amount (avoids per-week/fortnight amounts)
-        return max(candidates)
-    return None
-
 def detect_in_stock(soup, selectors: list[str], needle: Optional[str]) -> Optional[bool]:
     for sel in selectors:
         el = soup.select_one(sel)
-        if not el:
-            continue
+        if not el: continue
         text = el.get_text(" ", strip=True).lower()
         if needle:
             return needle.lower() in text
-        if any(tok in text for tok in ("in stock", "available", "in-store", "ready to ship", "in stock online")):
+        if any(tok in text for tok in ("in stock", "available", "ready to ship", "in stock online")):
             return True
         if any(tok in text for tok in ("out of stock", "sold out", "unavailable", "pre-order", "backorder")):
             return False
@@ -194,31 +165,27 @@ def scrape_store(page, store: Store):
     page.goto(store.url, wait_until="networkidle", timeout=60000)
     time.sleep(1.5)
     html = page.content()
+    (DEBUGDIR / f"{store.name}.html").write_text(html[:300000], errors="ignore")
     soup = BeautifulSoup(html, "lxml")
 
-    # dump debug snapshot
-    (DEBUGDIR / f"{store.name}.html").write_text(html[:300000], errors="ignore")
+    cands: List[Tuple[float,int,str]] = []
 
-    # 1) store-provided selectors first
-    price = None
-    store_price_sels = []
-    if store.price_selector:
-        store_price_sels = [s.strip() for s in store.price_selector.split(",") if s.strip()]
-        price = try_css_price(soup, store_price_sels)
+    # Store-specific selectors first
+    store_sels = [s.strip() for s in (store.price_selector or "").split(",") if s.strip()]
+    if store_sels:
+        cands += collect_css_candidates(soup, store_sels)
 
-    # 2) generic CSS selectors
-    if price is None:
-        price = try_css_price(soup, GENERIC_PRICE_SELECTORS)
+    # Generic CSS
+    cands += collect_css_candidates(soup, GENERIC_PRICE_SELECTORS)
 
-    # 3) JSON-LD offers
-    if price is None:
-        price = try_jsonld_price(soup)
+    # JSON-LD
+    cands += collect_jsonld_candidates(soup)
 
-    # 4) regex fallback over whole HTML
-    if price is None:
-        price = try_regex_price(html)
+    # Regex fallback
+    cands += collect_regex_candidates(html)
 
-    # stock detection
+    price = choose_best(cands)
+
     stock = detect_in_stock(
         soup,
         ([s.strip() for s in (store.stock_selector or "").split(",") if s.strip()] or GENERIC_STOCK_SELECTORS),
@@ -264,7 +231,6 @@ def main():
 
         browser.close()
 
-    # pick lowest price with not-null
     valid = [r for r in results if isinstance(r.get("price_aud"), (int, float))]
     lowest = min(valid, key=lambda r: r["price_aud"]) if valid else None
 
@@ -276,7 +242,6 @@ def main():
     )
     LATEST.write_text(json.dumps(snapshot.model_dump(), indent=2))
 
-    # history append
     hist = load_history()
     day = today_iso_date_tz()
     lowest_price = lowest["price_aud"] if lowest else None
@@ -288,7 +253,6 @@ def main():
     hist = sorted(hist, key=lambda x: x["date"])[-365:]
     save_history(hist)
 
-    # simple index for Pages
     (OUTDIR / "index.html").write_text(f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>GPU Price Tracker</title></head>
 <body>
