@@ -3,11 +3,18 @@ import yaml
 from urllib.parse import quote_plus, urljoin
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
 
 ROOT = pathlib.Path(__file__).parent
 OUT = ROOT / "config" / "stores.yml"
 CATALOG = ROOT / "config" / "retailers.yml"
+
+# --- tiny stealth shim (no external deps) ---
+STEALTH_JS = r"""
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+window.chrome = window.chrome || { runtime: {} };
+Object.defineProperty(navigator, 'languages', { get: () => ['en-US','en'] });
+Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
+"""
 
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "").lower()
@@ -39,10 +46,10 @@ def run():
             timezone_id="Australia/Sydney",
             viewport={"width": 1366, "height": 768}
         )
+        context.add_init_script(STEALTH_JS)
         page = context.new_page()
-        stealth_sync(page)
 
-        # 1) Force-include fixed entries (e.g., MSY)
+        # 1) Force-include fixed entries (e.g., MSY, PCCG, etc.)
         for it in must_include:
             print(f"[DISCOVER] force-include: {it['name']} -> {it['url']}")
             found.append({
@@ -53,17 +60,17 @@ def run():
                 "in_stock_text": it.get("in_stock_text", "in stock")
             })
 
-        # 2) Discover via each retailer's search (kept simple; we mainly rely on must_include)
+        # 2) Optional discovery via each retailer's search
         for r in retailers:
             try:
                 search_url = r["search_url"].format(q=quote_plus(q))
                 print(f"[DISCOVER] Retailer={r['name']}  URL={search_url}")
                 page.goto(search_url, wait_until="networkidle", timeout=60000)
-                page.wait_for_timeout(6000)  # give CF time if present
+                page.wait_for_timeout(6000)  # let CF interstitial pass if present
                 soup = BeautifulSoup(page.content(), "lxml")
 
-                # Try site-provided selector first
                 links = []
+                # Try site-provided selector first
                 sel = r.get("result_item_selector")
                 if sel:
                     for a in soup.select(sel):
