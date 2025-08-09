@@ -167,7 +167,11 @@ def scrape_store(page, store: Store):
     page.goto(store.url, wait_until="networkidle", timeout=60000)
     time.sleep(1.5)
     html = page.content()
-    (DEBUGDIR / f"{store.name}.html").write_text(html[:300000], errors="ignore")
+
+    # Save full HTML to debug folder for later inspection
+    with open(DEBUGDIR / f"{store.name}.html", "w", encoding="utf-8", errors="ignore") as f:
+         f.write(html)
+
     soup = BeautifulSoup(html, "lxml")
 
     cands: List[Tuple[float,int,str]] = []
