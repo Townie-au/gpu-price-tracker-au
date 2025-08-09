@@ -50,20 +50,62 @@ def run():
                 time.sleep(2.0)
                 soup = BeautifulSoup(page.content(), "lxml")
 
+                # -------- collect links (with fallback) --------
                 links = []
-                for a in soup.select(r["result_item_selector"]):
-                    href = a.get("href") or ""
-                    if href.startswith("/"):
-                        href = urljoin(search_url, href)
-                    links.append((a.get_text(" ", strip=True) or "", href))
 
-                print(f"[DISCOVER] {r['name']}: found {len(links)} candidate links")
+                # Try retailer-provided selector first
+                sel = r.get("result_item_selector")
+                if sel:
+                    for a in soup.select(sel):
+                        href = a.get("href") or ""
+                        if href.startswith("/"):
+                            href = urljoin(search_url, href)
+                        txt = a.get_text(" ", strip=True) or ""
+                        if href:
+                            links.append((txt, href))
+
+                # Fallback: score all anchors on page
+                if not links:
+                    all_as = []
+                    host = search_url.split("/")[2].lower()
+                    for a in soup.select("a[href]"):
+                        href = a.get("href") or ""
+                        if href.startswith("/"):
+                            href = urljoin(search_url, href)
+                        if not href.lower().startswith(("http://", "https://")):
+                            continue
+                        if host not in href.lower():
+                            continue
+                        txt = a.get_text(" ", strip=True) or ""
+                        all_as.append((txt, href))
+
+                    # prefer product-looking URLs
+                    def productish(h: str) -> int:
+                        h = h.lower()
+                        keys = ("/product", "/products", "/item", "/p/", "/buy", "/detail")
+                        return sum(k in h for k in keys)
+
+                    # de-dupe by href
+                    seen = set()
+                    dedup = []
+                    for txt, href in all_as:
+                        if href in seen:
+                            continue
+                        seen.add(href)
+                        dedup.append((txt, href))
+
+                    # keep top 50 by "productish" score, then rely on token scoring
+                    dedup.sort(key=lambda x: productish(x[1]), reverse=True)
+                    links = dedup[:50]
+
+                print(f"[DISCOVER] {r['name']}: found {len(links)} candidate links (with fallback)")
                 for i, (txt, href) in enumerate(links[:5]):
                     print(f"  - cand{i+1}: text='{txt[:80]}' url='{href}'")
 
                 if not links:
                     continue
 
+                # Rank by token overlap in link text
                 ranked = sorted(links, key=lambda x: score_title(x[0], tokens), reverse=True)
                 best_href = ranked[0][1]
                 print(f"[DISCOVER] {r['name']}: chosen href = {best_href}")
