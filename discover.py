@@ -118,6 +118,7 @@ def run():
         })
 
     # Write config/stores.yml for the scraper
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(yaml.safe_dump({"sku": cfg["query"], "stores": stores}, sort_keys=False))
 
 if __name__ == "__main__":
