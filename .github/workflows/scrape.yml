@@ -30,7 +30,13 @@ jobs:
 
       - name: Run discovery (build config/stores.yml)
         run: python discover.py
-      
+
+      - name: Show generated stores.yml
+        run: |
+          echo "===== config/stores.yml ====="
+          ls -la config || true
+          cat config/stores.yml || true
+          
       - name: Run scraper
         run: python scrape.py
 
