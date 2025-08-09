@@ -5,6 +5,12 @@ stores:
   price_selector: .product-price, [data-testid='productPrice'], .price
   stock_selector: .product-availability, .stock-status, .availability
   in_stock_text: in stock
+- name: JW
+  url: https://www.jw.com.au/product/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc-gpu?gad_source=1&gad_campaignid=17413494642&gbraid=0AAAAADd-mYmKZLv5py52VUgQBLUXWsiYj&gclid=CjwKCAjwwNbEBhBpEiwAFYLtGLN-asXVNidNhxA7MbklaNkSUV_OZi5s-nMaUTIEDFDe_9CYIhO_gRoCxmcQAvD_BwE
+  price_selector: .price, .product-price, [itemprop='price'], meta[itemprop='price'],
+    meta[property='product:price:amount']
+  stock_selector: .availability, .stock-status, .stock, [data-testid='stock']
+  in_stock_text: in stock
 - name: PCCG
   url: https://www.pccasegear.com/products/69141/msi-geforce-rtx-5070-ti-inspire-3x-oc-gddr7-16gb
   price_selector: .price, [itemprop='price']
