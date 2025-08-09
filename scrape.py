@@ -4,6 +4,7 @@ import yaml
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 
 ROOT = pathlib.Path(__file__).parent
 OUTDIR = ROOT / "out"
@@ -165,6 +166,7 @@ def detect_in_stock(soup, selectors: list[str], needle: Optional[str]) -> Option
 
 def scrape_store(page, store: Store):
     page.goto(store.url, wait_until="networkidle", timeout=60000)
+    page.wait_for_timeout(6000)
     time.sleep(1.5)
     html = page.content()
 
@@ -229,8 +231,17 @@ def main():
     stores = [Store(**s) for s in cfg["stores"]]
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari")
+    browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+    context = browser.new_context(
+        user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+        locale="en-AU",
+        timezone_id="Australia/Sydney",
+        viewport={"width": 1366, "height": 768}
+    )
+    page = context.new_page()
+    stealth_sync(page)
+
 
         results = []
         for s in stores:
