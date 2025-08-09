@@ -4,7 +4,6 @@ import yaml
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
 
 ROOT = pathlib.Path(__file__).parent
 OUTDIR = ROOT / "out"
@@ -15,10 +14,17 @@ HISTORY = OUTDIR / "history.json"
 LATEST  = OUTDIR / "latest.json"
 CONFIG  = ROOT / "config" / "stores.yml"
 
+# --- tiny stealth shim (no external deps) ---
+STEALTH_JS = r"""
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+window.chrome = window.chrome || { runtime: {} };
+Object.defineProperty(navigator, 'languages', { get: () => ['en-US','en'] });
+Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
+"""
+
 # ---------- heuristics ----------
-# Accept realistic GPU prices only; widen if you want.
-MIN_PRICE = 1100.0
-MAX_PRICE = 3000.0
+MIN_PRICE = 1200.0
+MAX_PRICE = 5000.0
 
 JUNK_WORDS = [
     "per week", "per fortnight", "per month", "/week", "/wk", "/fortnight",
@@ -36,11 +42,11 @@ GENERIC_PRICE_SELECTORS = [
     "[itemprop='price']",
     "meta[itemprop='price']",
     "meta[property='product:price:amount']",
+    "meta[property='og:price:amount']",
     "[data-price]",
     "[data-testid='product-price']",
     "[data-test='Price']",
     "span[itemprop='price'][content]",
-    "meta[property='og:price:amount']"
     ".product-price",
     ".price",
     ".final-price",
@@ -64,6 +70,19 @@ GENERIC_STOCK_SELECTORS = [
 def plausible(v: Optional[float]) -> bool:
     return v is not None and (MIN_PRICE <= v <= MAX_PRICE)
 
+class Store(BaseModel):
+    name: str
+    url: str
+    price_selector: Optional[str] = None
+    stock_selector: Optional[str] = None
+    in_stock_text: Optional[str] = None
+
+class Snapshot(BaseModel):
+    ts: str
+    sku: str
+    lowest: Optional[dict]
+    stores: list
+
 def to_float(s: str) -> Optional[float]:
     m = PRICE_RE.search(s or "")
     if not m: return None
@@ -71,7 +90,6 @@ def to_float(s: str) -> Optional[float]:
     except: return None
 
 def text_near(el) -> str:
-    # element text + a bit of parent text for context
     t = (el.get_text(" ", strip=True) if hasattr(el, "get_text") else "") or ""
     p = el.parent.get_text(" ", strip=True) if getattr(el, "parent", None) else ""
     s = (t + " " + p).lower()
@@ -89,14 +107,12 @@ def collect_css_candidates(soup: BeautifulSoup, selectors: List[str]) -> List[Tu
     cands = []
     for sel in selectors:
         for el in soup.select(sel):
-            # meta price in content/value
             if getattr(el, "name", "") == "meta":
                 val = el.get("content") or el.get("value") or ""
-                v = to_float(val)
+                v = to_float("A$"+val)
                 if plausible(v):
                     cands.append((v, 15, f"meta:{sel}"))
                 continue
-            # text price
             txt = el.get_text(" ", strip=True)
             v = to_float(txt)
             if plausible(v):
@@ -108,11 +124,9 @@ def collect_jsonld_candidates(soup: BeautifulSoup) -> List[Tuple[float,int,str]]
     out = []
     for s in soup.find_all("script", {"type":"application/ld+json"}):
         raw = s.get_text(strip=True) or ""
-        # quick wins
         for m in re.finditer(r'"price"\s*:\s*"?(?P<val>[0-9]{2,5}(?:\.[0-9]{2})?)"?', raw):
             v = to_float("A$"+m.group("val"))
             if plausible(v): out.append((v, 18, "jsonld:price"))
-        # low/high price fields
         for key in ("lowPrice","highPrice","priceAmount"):
             for m in re.finditer(rf'"{key}"\s*:\s*"?(?P<val>[0-9]{{2,5}}(?:\.[0-9]{{2}})?)"?', raw):
                 v = to_float("A$"+m.group("val"))
@@ -121,11 +135,9 @@ def collect_jsonld_candidates(soup: BeautifulSoup) -> List[Tuple[float,int,str]]
 
 def collect_regex_candidates(html: str) -> List[Tuple[float,int,str]]:
     cands = []
-    # require currency symbol; avoid bare numbers
     for m in re.finditer(r"(?:A?\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})?)", html, re.I):
         v = to_float("A$"+m.group(1))
         if plausible(v):
-            # peek around the match for bad words
             start = max(0, m.start()-80); end = min(len(html), m.end()+80)
             ctx = html[start:end].lower()
             pen = -8 if any(w in ctx for w in JUNK_WORDS) else 0
@@ -134,22 +146,8 @@ def collect_regex_candidates(html: str) -> List[Tuple[float,int,str]]:
 
 def choose_best(cands: List[Tuple[float,int,str]]) -> Optional[float]:
     if not cands: return None
-    # pick by score then value (prefer higher if same score to avoid per-week small numbers)
     cands.sort(key=lambda x: (x[1], x[0]), reverse=True)
     return cands[0][0]
-
-class Store(BaseModel):
-    name: str
-    url: str
-    price_selector: Optional[str] = None
-    stock_selector: Optional[str] = None
-    in_stock_text: Optional[str] = None
-
-class Snapshot(BaseModel):
-    ts: str
-    sku: str
-    lowest: Optional[dict]
-    stores: list
 
 def detect_in_stock(soup, selectors: list[str], needle: Optional[str]) -> Optional[bool]:
     for sel in selectors:
@@ -166,14 +164,11 @@ def detect_in_stock(soup, selectors: list[str], needle: Optional[str]) -> Option
 
 def scrape_store(page, store: Store):
     page.goto(store.url, wait_until="networkidle", timeout=60000)
-    page.wait_for_timeout(6000)
-    time.sleep(1.5)
+    page.wait_for_timeout(6000)  # let CF interstitial pass if present
     html = page.content()
 
-    # Save full HTML to debug folder for later inspection
-    with open(DEBUGDIR / f"{store.name}.html", "w", encoding="utf-8", errors="ignore") as f:
-         f.write(html)
-
+    # Save raw HTML for debugging
+    (DEBUGDIR / f"{store.name}.html").write_text(html[:300000], errors="ignore")
     soup = BeautifulSoup(html, "lxml")
 
     cands: List[Tuple[float,int,str]] = []
@@ -192,14 +187,13 @@ def scrape_store(page, store: Store):
     # Regex fallback
     cands += collect_regex_candidates(html)
 
-    price = choose_best(cands)
+    # DEBUG: dump top candidates
+    dbg = sorted(cands, key=lambda x: (x[1], x[0]), reverse=True)[:10]
+    (DEBUGDIR / f"{store.name}.prices.txt").write_text(
+        "\n".join([f"{store.name} candidates (value,score,source):"] + [f"{v} | {sc} | {src}" for (v, sc, src) in dbg])
+    )
 
-    # --- DEBUG: dump top candidates for this store ---
-    if True:
-       dbg = sorted(cands, key=lambda x: (x[1], x[0]), reverse=True)[:10]
-       lines = [f"{store.name} candidates (value,score,source):"]
-       lines += [f"{v} | {sc} | {src}" for (v, sc, src) in dbg]
-       (DEBUGDIR / f"{store.name}.prices.txt").write_text("\n".join(lines))
+    price = choose_best(cands)
 
     stock = detect_in_stock(
         soup,
@@ -231,17 +225,19 @@ def main():
     stores = [Store(**s) for s in cfg["stores"]]
 
     with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
-    context = browser.new_context(
-        user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
-        locale="en-AU",
-        timezone_id="Australia/Sydney",
-        viewport={"width": 1366, "height": 768}
-    )
-    page = context.new_page()
-    stealth_sync(page)
-
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
+        context = browser.new_context(
+            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+            locale="en-AU",
+            timezone_id="Australia/Sydney",
+            viewport={"width": 1366, "height": 768}
+        )
+        context.add_init_script(STEALTH_JS)
+        page = context.new_page()
 
         results = []
         for s in stores:
@@ -288,7 +284,7 @@ def main():
 <pre>{json.dumps(results, indent=2)}</pre>
 <h2>History (last 30)</h2>
 <pre>{json.dumps(hist[-30:], indent=2)}</pre>
-<p>Debug HTML saved for each store under out/debug/</p>
+<p>Debug HTML and candidate lists saved under out/debug/</p>
 </body></html>""")
 
 if __name__ == "__main__":
