@@ -1,4 +1,4 @@
-import pathlib, json, time, re, unicodedata
+import pathlib, time, re, unicodedata
 import yaml
 from urllib.parse import quote_plus, urljoin
 from bs4 import BeautifulSoup
@@ -17,23 +17,6 @@ def score_title(title: str, tokens: list[str]) -> int:
     t = norm(title)
     return sum(1 for tok in tokens if tok.lower() in t)
 
-def extract_price_text(soup, sels):
-    for sel in sels.split(","):
-        el = soup.select_one(sel.strip())
-        if el:
-            txt = el.get_text(" ", strip=True)
-            if txt:
-                return txt
-    return None
-
-def detect_in_stock(soup, stock_sel, needle):
-    if not stock_sel: return None
-    el = soup.select_one(stock_sel)
-    if not el: return None
-    text = el.get_text(" ", strip=True).lower()
-    if needle: return needle.lower() in text
-    return ("in stock" in text) or ("available" in text)
-
 def run():
     cfg = yaml.safe_load(CATALOG.read_text())
     q = cfg["query"]
@@ -47,8 +30,9 @@ def run():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari")
 
-        # 1) Force-include fixed entries (MSY etc.)
+        # 1) Force-include fixed entries (e.g., MSY)
         for it in must_include:
+            print(f"[DISCOVER] force-include: {it['name']} -> {it['url']}")
             found.append({
                 "name": it["name"],
                 "url": it["url"],
@@ -57,10 +41,11 @@ def run():
                 "in_stock_text": it.get("in_stock_text", "in stock")
             })
 
-        # 2) Discover per retailer via site search
+        # 2) Discover via each retailer's search
         for r in retailers:
             try:
                 search_url = r["search_url"].format(q=quote_plus(q))
+                print(f"[DISCOVER] Retailer={r['name']}  URL={search_url}")
                 page.goto(search_url, wait_until="networkidle", timeout=60000)
                 time.sleep(2.0)
                 soup = BeautifulSoup(page.content(), "lxml")
@@ -71,33 +56,41 @@ def run():
                     if href.startswith("/"):
                         href = urljoin(search_url, href)
                     links.append((a.get_text(" ", strip=True) or "", href))
+
+                print(f"[DISCOVER] {r['name']}: found {len(links)} candidate links")
+                for i, (txt, href) in enumerate(links[:5]):
+                    print(f"  - cand{i+1}: text='{txt[:80]}' url='{href}'")
+
                 if not links:
                     continue
 
-                # Rank links by token overlap in link text
                 ranked = sorted(links, key=lambda x: score_title(x[0], tokens), reverse=True)
                 best_href = ranked[0][1]
+                print(f"[DISCOVER] {r['name']}: chosen href = {best_href}")
 
-                # Optional: visit product page and double-check title
+                # Visit product page and check title
                 page.goto(best_href, wait_until="networkidle", timeout=60000)
                 time.sleep(1.5)
                 psoup = BeautifulSoup(page.content(), "lxml")
 
-                # Try H1/product-title first
                 title_el = None
                 for sel in (r.get("product_title_selector") or "h1").split(","):
-                    title_el = psoup.select_one(sel.strip())
+                    sel = sel.strip()
+                    if not sel:
+                        continue
+                    title_el = psoup.select_one(sel)
                     if title_el:
                         break
 
-                # Fallback to <title> tag if needed
                 title = title_el.get_text(" ", strip=True) if title_el else ""
                 if not title:
                     ttag = psoup.select_one("title")
                     title = ttag.get_text(" ", strip=True) if ttag else best_href
 
-                # Looser threshold to allow minor naming differences
-                if score_title(title, tokens) < max(4, len(tokens) - 5):
+                sc = score_title(title, tokens)
+                print(f"[DISCOVER] {r['name']}: product title='{title[:120]}'  score={sc}")
+                if sc < max(4, len(tokens) - 5):
+                    print(f"[DISCOVER] {r['name']}: skipped (weak match)")
                     continue
 
                 found.append({
@@ -107,8 +100,8 @@ def run():
                     "stock_selector": r.get("stock_selector"),
                     "in_stock_text": r.get("in_stock_text")
                 })
-            except Exception:
-                # best-effort; skip failures
+            except Exception as e:
+                print(f"[DISCOVER] {r.get('name','?')}: error: {e}")
                 continue
 
         browser.close()
@@ -128,9 +121,11 @@ def run():
             "in_stock_text": s.get("in_stock_text")
         })
 
-    # Write config/stores.yml for the scraper
+    # Write config/stores.yml
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(yaml.safe_dump({"sku": cfg["query"], "stores": stores}, sort_keys=False))
+    data = {"sku": cfg["query"], "stores": stores}
+    OUT.write_text(yaml.safe_dump(data, sort_keys=False))
+    print(f"[DISCOVER] wrote {OUT} with {len(stores)} stores")
 
 if __name__ == "__main__":
     run()
