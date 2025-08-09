@@ -188,6 +188,13 @@ def scrape_store(page, store: Store):
 
     price = choose_best(cands)
 
+    # --- DEBUG: dump top candidates for this store ---
+    if True:
+       dbg = sorted(cands, key=lambda x: (x[1], x[0]), reverse=True)[:10]
+       lines = [f"{store.name} candidates (value,score,source):"]
+       lines += [f"{v} | {sc} | {src}" for (v, sc, src) in dbg]
+       (DEBUGDIR / f"{store.name}.prices.txt").write_text("\n".join(lines))
+
     stock = detect_in_stock(
         soup,
         ([s.strip() for s in (store.stock_selector or "").split(",") if s.strip()] or GENERIC_STOCK_SELECTORS),
