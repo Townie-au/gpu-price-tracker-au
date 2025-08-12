@@ -1,5 +1,5 @@
 {
-  "ts": "2025-08-12T09:38:16.583519+10:00",
+  "ts": "2025-08-13T09:39:50.438559+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
   "lowest": null,
   "stores": [
@@ -33,7 +33,8 @@
       "store": "Centre Com",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
+      "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc",
+      "error": "Page.goto: Timeout 60000ms exceeded.\nCall log:\nnavigating to \"https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc\", waiting until \"networkidle\"\n"
     },
     {
       "store": "Umart",
