@@ -1,14 +1,18 @@
 {
-  "ts": "2026-03-02T09:44:15.569931+10:00",
+  "ts": "2026-03-03T09:45:01.264741+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
-  "lowest": null,
+  "lowest": {
+    "store": "Mwave",
+    "price_aud": 1729.0,
+    "in_stock": null,
+    "url": "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860"
+  },
   "stores": [
     {
       "store": "MSY",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989",
-      "error": "Page.goto: Timeout 60000ms exceeded.\nCall log:\nnavigating to \"https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989\", waiting until \"networkidle\"\n"
+      "url": "https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
     },
     {
       "store": "JW",
@@ -32,22 +36,25 @@
       "store": "Centre Com",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc",
-      "error": "Page.goto: Timeout 60000ms exceeded.\nCall log:\nnavigating to \"https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc\", waiting until \"networkidle\"\n"
+      "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
     },
     {
       "store": "Umart",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://www.umart.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989",
-      "error": "Page.goto: Timeout 60000ms exceeded.\nCall log:\nnavigating to \"https://www.umart.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989\", waiting until \"networkidle\"\n"
+      "url": "https://www.umart.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
     },
     {
       "store": "Mwave",
+      "price_aud": 1729.0,
+      "in_stock": null,
+      "url": "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860"
+    },
+    {
+      "store": "PLE",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860",
-      "error": "Page.goto: Timeout 60000ms exceeded.\nCall log:\nnavigating to \"https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860\", waiting until \"networkidle\"\n"
+      "url": "https://www.ple.com.au/products/676563/msi-geforce-rtx-5070-ti-inspire-3x-oc-16gb-gddr7"
     }
   ]
 }

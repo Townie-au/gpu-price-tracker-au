@@ -822,5 +822,9 @@
   {
     "date": "2026-03-02",
     "lowest_price_aud": null
+  },
+  {
+    "date": "2026-03-03",
+    "lowest_price_aud": 1729.0
   }
 ]
