@@ -1,9 +1,9 @@
 {
-  "ts": "2026-04-10T09:57:06.029543+10:00",
+  "ts": "2026-04-11T09:54:28.214522+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
   "lowest": {
     "store": "Centre Com",
-    "price_aud": 1599.0,
+    "price_aud": 1549.0,
     "in_stock": null,
     "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
   },
@@ -34,7 +34,7 @@
     },
     {
       "store": "Centre Com",
-      "price_aud": 1599.0,
+      "price_aud": 1549.0,
       "in_stock": null,
       "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
     },
@@ -49,13 +49,6 @@
       "price_aud": 1729.0,
       "in_stock": null,
       "url": "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860"
-    },
-    {
-      "store": "PLE",
-      "price_aud": null,
-      "in_stock": null,
-      "url": "https://www.ple.com.au/products/676563/msi-geforce-rtx-5070-ti-inspire-3x-oc-16gb-gddr7",
-      "error": "Page.goto: Timeout 60000ms exceeded.\nCall log:\nnavigating to \"https://www.ple.com.au/products/676563/msi-geforce-rtx-5070-ti-inspire-3x-oc-16gb-gddr7\", waiting until \"networkidle\"\n"
     }
   ]
 }
