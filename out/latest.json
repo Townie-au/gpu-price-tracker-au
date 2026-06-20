@@ -1,11 +1,11 @@
 {
-  "ts": "2026-06-19T12:08:01.717104+10:00",
+  "ts": "2026-06-20T10:22:15.001877+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
   "lowest": {
-    "store": "Mwave",
-    "price_aud": 1395.0,
+    "store": "Centre Com",
+    "price_aud": 1499.0,
     "in_stock": null,
-    "url": "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860"
+    "url": "https://www.centrecom.com.au/msi-geforce-rtx-5070-ti-16g-inspire-3x-oc"
   },
   "stores": [
     {
@@ -46,7 +46,7 @@
     },
     {
       "store": "Mwave",
-      "price_aud": 1395.0,
+      "price_aud": 1729.0,
       "in_stock": null,
       "url": "https://www.mwave.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-plus-16gb-video-card-ac81860"
     },
