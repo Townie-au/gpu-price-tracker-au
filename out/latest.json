@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-02T10:23:39.511358+10:00",
+  "ts": "2026-07-03T10:21:01.724317+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
   "lowest": {
     "store": "Centre Com",
@@ -54,7 +54,7 @@
       "store": "PLE",
       "price_aud": null,
       "in_stock": null,
-      "url": "https://www.ple.com.au/products/673673/msi-geforce-rtx-5070-ti-shadow-3x-oc-16gb-gddr7"
+      "url": "https://www.ple.com.au/products/673620/msi-geforce-rtx-5070-ti-ventus-3x-oc-16gb-gddr7"
     }
   ]
 }
