@@ -1,9 +1,5 @@
 [
   {
-    "date": "2025-08-17",
-    "lowest_price_aud": null
-  },
-  {
     "date": "2025-08-18",
     "lowest_price_aud": null
   },
@@ -1458,5 +1454,9 @@
   {
     "date": "2026-08-17",
     "lowest_price_aud": 1799.0
+  },
+  {
+    "date": "2026-08-18",
+    "lowest_price_aud": 1999.0
   }
 ]
