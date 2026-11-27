@@ -1,11 +1,16 @@
 {
-  "ts": "2026-11-26T15:04:44.517744+10:00",
+  "ts": "2026-11-27T15:05:22.648356+10:00",
   "sku": "MSI GeForce RTX 5070 Ti INSPIRE 3X OC",
-  "lowest": null,
+  "lowest": {
+    "store": "MSY",
+    "price_aud": 2149.0,
+    "in_stock": null,
+    "url": "https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
+  },
   "stores": [
     {
       "store": "MSY",
-      "price_aud": null,
+      "price_aud": 2149.0,
       "in_stock": null,
       "url": "https://www.msy.com.au/product/msi-geforce-rtx-5070-ti-inspire-3x-oc-16g-graphics-card-rtx-5070-ti-16g-inspire-3x-oc-82989"
     },
